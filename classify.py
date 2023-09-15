@@ -12,13 +12,16 @@ import os
 
 import cv2
 
+numEval = 0
+
+
 model = []
 class_names = []
 data_dir = pathlib.Path("./trainset/").with_suffix('')
 batch_size = 32
 img_height = 180
 img_width = 180
-epochs=2
+epochs=15
 
 def train():
     global class_names
@@ -72,30 +75,34 @@ def train():
     )
     return model
 
-def rnEval(file,model):
-    myfile = 'white_land.png'
-    fullPath = os.path.abspath("./" + file)
-    test_img = tf.keras.utils.get_file(myfile,origin='file:\\'+fullPath)
+def rnEval(myfile,model):
+    global numEval
+    #myfile = 'white_land.png'
+    fullPath = os.path.abspath("./" + myfile)
+    test_img = tf.keras.utils.get_file(str(numEval),origin='file:\\'+fullPath)
+    numEval +=1
     img = tf.keras.utils.load_img(
         test_img, target_size=(img_height, img_width)
     )
+
     img_array = tf.keras.utils.img_to_array(img)
     img_array = tf.expand_dims(img_array, 0) # Create a batch
 
     predictions = model.predict(img_array)
     score = tf.nn.softmax(predictions[0])
-
     print(predictions)
     print(score)
+
     return score
 
 # if __name__ == '__main__':
 #     main()
 
 def main():
-    c = cv2.VideoCapture(0)
+    c = cv2.VideoCapture(1)
     numOk = 0
     numNOk = 0
+
     title = "feed"
     while(True):
         global model
@@ -114,7 +121,7 @@ def main():
         if cv2.waitKey(10) == ord('n')&0xFF:
             title = "saved NOK " + str(numNOk)
             print('saved NOK!')
-            cv2.imwrite('./trainset/NOK/imgNOk' + str(numOk)+'.png',img)
+            cv2.imwrite('./trainset/NOK/imgNOk' + str(numNOk)+'.png',img)
             numNOk +=1
         if cv2.waitKey(10) == ord('t')&0xFF:
             title = "trained!"
