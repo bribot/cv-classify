@@ -10,15 +10,14 @@ import pathlib
 import os
 import cv2
 from pathlib import Path
+from harvesterCv import Adquisition
+import shutil
 
 numEval = 0
 cam = 0
 
-cat0 = '1'
-cat1 = '2'
-cat2 = '3'
-cat3 = '4'
-cat4 = '5'
+categories = ['OK','NG','Vacio','Cat4','Cat5']
+
 path_cat = "./trainset/"
 
 
@@ -131,21 +130,31 @@ def checkFolder(path):
        os.makedirs(path)
 
 def main():
+    
     trained = False
-    #cam = "tcp://192.168.16.130:5050"
-    #windowName = 'feed'
-    c = cv2.VideoCapture(cam)
-    # checkFolder(path_ok)
-    # checkFolder(path_nok)
+    c = Adquisition()
+    c.getDevices()
+    c.setAdquisitionDevice({'serial_number': 'S1176510'})
+    c.setExposure(50000)
+    c.setGain(1)
+    c.startAdquisition()
+    scale_percent = 20
     ret,frame = c.read()
+    height, width, layer = frame.shape
+    width = int(width * scale_percent / 100)
+    height = int(height * scale_percent / 100)
+    dim = (width, height)
+    frame = cv2.resize(frame,dim,interpolation=cv2.INTER_NEAREST)
     #img_height,img_width,l = frame.shape
     roi0 = cv2.selectROI(frame)
     cv2.destroyAllWindows()
-    title = "feed"
+    title = "Feed"
     while(True):
         global model
         ret,frame = c.read()
-        img = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
+        # resize image
+        img = cv2.resize(frame, dim, interpolation = cv2.INTER_AREA)
+        img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
         img = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
         img0 = img[roi0[1]:roi0[1]+roi0[3], roi0[0]:roi0[0]+roi0[2]]
         cv2.rectangle(img,roi0,color=(0,0,255))
@@ -153,12 +162,15 @@ def main():
             score = rnEval(img0,model)
             title = class_names[np.argmax(score)]
 
-        cv2.putText(img,title,(50,50),cv2.FONT_HERSHEY_SIMPLEX,1,color=(100,0,255))
+        cv2.putText(img,title,(50,100),cv2.FONT_HERSHEY_DUPLEX,3,color=(0,200,255))
         cv2.imshow('feed',img)
 
         key = cv2.waitKey(10)
         if key == ord('q')&0xFF:
             break
+        if key == ord('r')&0xFF:
+            trained = False
+            shutil.rmtree('./trainset')
         if key == ord('t')&0xFF:
             title = "trained!"
             model = train()
@@ -171,10 +183,10 @@ def main():
             #"This image most likely belongs to {} with a {:.2f} percent confidence."
             #.format(class_names[np.argmax(score)], 100 * np.max(score)))
         elif(key > 48 and key < 58):
-            tempPath = path_cat+str(key-48)+'/'
+            tempPath = path_cat+categories[key-48-1]+'/'
             checkFolder(tempPath)
-            saveImg(img0,tempPath,str(key))
-            title = "saved " + str(key-48)
+            saveImg(img0,tempPath,categories[key-48-1])
+            title = "saved " + categories[key-48-1]
             
         
 
