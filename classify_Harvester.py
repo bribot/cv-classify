@@ -1,5 +1,7 @@
 import numpy as np
 import cv2
+import sys
+sys.path.insert(1,'C:/Users/Bri/Documents/workspace/APAAQ Software Suite/HarvesterCv/')
 from harvesterCv import Adquisition
 
 from classify import Classify

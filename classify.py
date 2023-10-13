@@ -24,7 +24,7 @@ class Classify():
         self.model = []
         self.class_names = []
         self.data_dir = Path(self.nameId).with_suffix('')
-        self.batch_size = 32
+        self.batch_size = 8#32
         self.img_height = 180
         self.img_width = 180
         self.epochs=15
