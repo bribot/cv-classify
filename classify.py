@@ -28,14 +28,36 @@ class Classify():
         self.img_height = 180
         self.img_width = 180
         self.epochs=15
+        self.checkpoint_path = Path(self.data_dir,"cp.ckpt")
         self.checkFolder()
 
     def train(self):
         # global class_names
         #okPics = list(data_dir.glob('MTG Red Man/*'))
         #nokPics = list(data_dir.glob('MTG White Mana/*'))
+        cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
+                                                        save_weights_only=True,
+                                                        verbose=1)
         
-        train_ds = tf.keras.utils.image_dataset_from_directory(
+        self.createDatasets()
+        normalization_layer = tf.keras.layers.Rescaling(1./255)
+        normalized_ds = train_ds.map(lambda x, y: (normalization_layer(x), y))
+        image_batch, labels_batch = next(iter(normalized_ds))
+        AUTOTUNE = tf.data.AUTOTUNE
+        train_ds = train_ds.cache().prefetch(buffer_size=AUTOTUNE)
+        val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
+        
+
+        self.createModel()
+        history = self.model.fit(
+            self.train_ds,
+            validation_data=self.val_ds,
+            epochs=self.epochs,
+            callbacks=[cp_callback])  # Pass callback to training
+        
+        # return self.model
+    def createDatasets(self):
+        self.train_ds = tf.keras.utils.image_dataset_from_directory(
             self.data_dir,
             validation_split=0.2,
             subset="training",
@@ -43,22 +65,17 @@ class Classify():
             image_size=(self.img_height, self.img_width),
             batch_size=self.batch_size)
         
-        val_ds = tf.keras.utils.image_dataset_from_directory(
+        self.val_ds = tf.keras.utils.image_dataset_from_directory(
             self.data_dir,
             validation_split=0.2,
             subset="validation",
             seed=123,
             image_size=(self.img_height, self.img_width),
             batch_size=self.batch_size)
-        self.class_names = train_ds.class_names
-        normalization_layer = tf.keras.layers.Rescaling(1./255)
-        normalized_ds = train_ds.map(lambda x, y: (normalization_layer(x), y))
-        image_batch, labels_batch = next(iter(normalized_ds))
-        AUTOTUNE = tf.data.AUTOTUNE
-        train_ds = train_ds.cache().prefetch(buffer_size=AUTOTUNE)
-        val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
-        num_classes = len(self.class_names)
+        self.class_names = self.train_ds.class_names
 
+    def createModel(self):
+        num_classes = len(self.class_names)
         self.model = tf.keras.Sequential([
             tf.keras.layers.Rescaling(1./255),
             tf.keras.layers.Conv2D(32, 3, activation='relu'),
@@ -71,16 +88,12 @@ class Classify():
             tf.keras.layers.Dense(128, activation='relu'),
             tf.keras.layers.Dense(num_classes)
         ])
+
         self.model.compile(
             optimizer='adam',
             loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
             metrics=['accuracy'])
-        history = self.model.fit(
-            train_ds,
-            validation_data=val_ds,
-            epochs=self.epochs
-        )
-        # return self.model
+        
 
     def rnEval(self,img):
         img= cv2.resize(img,dsize=(self.img_height,self.img_width), interpolation = cv2.INTER_CUBIC)
@@ -93,7 +106,8 @@ class Classify():
         #print(score)
 
         return score
-
+    
+    
     def saveImg(self,img,category,idName = ''):
         self.checkFolder()
         tempPath = Path(self.data_dir,self.categories[category])
@@ -114,15 +128,25 @@ class Classify():
         shutil.rmtree(self.data_dir)
 
     def saveModel(self):
+        pass
         #TF lite
-        converter = tf.lite.TFLiteConverter.from_keras_model(self.model)
-        tftlite_model = converter.convert()
-        #save model
-        with open(str(self.data_dir) + '/' + self.nameId + '_model.tflite', 'wb') as f:
-            f.write(tftlite_model)
+        # converter = tf.lite.TFLiteConverter.from_keras_model(self.model)
+        # tftlite_model = converter.convert()
+        # #save model
+        # with open(str(self.data_dir) + '/' + self.nameId + '_model.tflite', 'wb') as f:
+        #     f.write(tftlite_model)
 
     def reloadModel(self):
-        pass
+        #self.model
+        self.createDatasets()
+        self.createModel()
+        # Loads the weights
+        self.model.load_weights(self.checkpoint_path)
+
+        # Re-evaluate the model
+        # loss, acc = self.model.evaluate(test_images, test_labels, verbose=2)
+        # print("Restored model, accuracy: {:5.2f}%".format(100 * acc))
+        
 
 
 
