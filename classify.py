@@ -10,7 +10,7 @@ import pathlib
 import os
 import cv2
 from pathlib import Path
-from harvesterCv import Adquisition
+#from harvesterCv import Adquisition
 import shutil
 
 # numEval = 0
