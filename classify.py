@@ -112,6 +112,8 @@ class Classify():
         self.checkFolder()
         tempPath = Path(self.data_dir,self.categories[category])
         ls = os.listdir(tempPath)
+        ls.sort()
+        #print(ls)
         if(ls == []):
             num = 0
         else:
