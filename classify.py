@@ -119,6 +119,7 @@ class Classify():
         else:
             num = int(ls[-1][-7:-4])+1
         cv2.imwrite(str(tempPath)+'/img' + idName + f"{num:03}" +'.png',img)
+        return len(ls)
 
 
     def checkFolder(self):
